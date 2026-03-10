@@ -63,9 +63,9 @@ Maret 2025 ───────────────────────
 ### Stakeholders
 | Role | Nama |
 |:---|:---|
-| Data Engineer | *(nama)* |
-| Data Analyst | *(nama)* |
-| Project Manager | *(nama)* |
+| Data Engineer | *Ardhana Syah Hidayat* |
+| Data Analyst | *Iqbal Abdullah* |
+| Project Manager | *Muhammad Adam Al Kidri* |
 
 ---
 
@@ -123,9 +123,9 @@ Seluruh data bersumber dari **Badan Pusat Statistik (BPS)** dengan cakupan 38 pr
 📦 project/
 │
 ├── 📂 data/
-│   ├── Master_Data_RLS_2015_2025__1_.csv
-│   ├── Master_Data_TPT_2015_2025__1_.csv
-│   └── Master_Data_Kemiskinan_2015_2025_Cleaned__1_.csv
+│   ├── Master_Data_RLS_2015_2025.csv
+│   ├── Master_Data_TPT_2015_2025.csv
+│   └── Master_Data_Kemiskinan_2015_2025_Cleaned.csv
 │
 ├── 📂 outputs/
 │   ├── dataset_gabungan.csv
