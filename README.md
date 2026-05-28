@@ -14,7 +14,8 @@
 ---
 
 ## 📋 Project Information
-| :--- | :--- |
+| Kategori | Keterangan |
+|:---|:---|
 | **Project Name** | Analisis Data Sosial Ekonomi Indonesia 2015–2025 |
 | **Created By** | Kelompok 3 Data Engineering |
 
