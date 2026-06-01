@@ -43,8 +43,8 @@ ENV/
 data/raw/*
 !data/raw/.gitkeep
 
-model/*
-!model/.gitkeep
+# model/*
+# !model/.gitkeep
 
 # Ignore checkpoint / temp files of Excel/CSV if open in Excel
 ~$*
