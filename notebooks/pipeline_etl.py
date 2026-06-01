@@ -2,7 +2,6 @@ import os
 import sys
 import pandas as pd
 
-# Memastikan folder root project dapat diakses
 sys.path.append(
     os.path.abspath(
         os.path.join(os.path.dirname(__file__), "..")
@@ -11,22 +10,20 @@ sys.path.append(
 
 from config.database import get_engine
 
-
-# ── 1. Konfigurasi ──────────────────────────────────────────────────────────
-RAW_DATA_DIR = "data/raw"
+# konfigurasi
+RAW_DATA_DIR = "data/clean"
 OUTPUT_CSV_PATH = "data/dataset_cleaned.csv"
 DATABASE_TABLE_NAME = "poverty_panel_data"
 
 DATASET_FILES = {
-    "education": "RLS.csv",
-    "unemployment": "TPT.csv",
-    "poverty": "Kemiskinan.csv"
+    "education": "rata_rata_lama_sekolah.csv",
+    "unemployment": "tingkat_pengangguran.csv",
+    "poverty": "persentase_penduduk_miskin.csv"
 }
 
-
-# ── 2. Extract ──────────────────────────────────────────────────────────────
+# EXTRACT
 def extract_data() -> dict[str, pd.DataFrame]:
-    print("── EXTRACT ─────────────────────────────────────────")
+    print("EXTRACT")
 
     extracted_data = {}
 
@@ -48,9 +45,9 @@ def extract_data() -> dict[str, pd.DataFrame]:
     return extracted_data
 
 
-# ── 3. Transform ────────────────────────────────────────────────────────────
+# TRANSFORM
 def transform_data(extracted_data: dict[str, pd.DataFrame]) -> pd.DataFrame:
-    print("\n── TRANSFORM ──────────────────────────────────────")
+    print("\nTRANSFORM")
 
     education_df = extracted_data["education"]
     unemployment_df = extracted_data["unemployment"]
@@ -92,9 +89,9 @@ def transform_data(extracted_data: dict[str, pd.DataFrame]) -> pd.DataFrame:
 
     return merged_df
 
-# ── 4. Load ─────────────────────────────────────────────────────────────────
+# LOAD
 def load_data(final_df: pd.DataFrame) -> None:
-    print("\n── LOAD ───────────────────────────────────────────")
+    print("\nLOAD")
 
     # Simpan backup lokal
     os.makedirs(os.path.dirname(OUTPUT_CSV_PATH), exist_ok=True)
@@ -124,9 +121,9 @@ def load_data(final_df: pd.DataFrame) -> None:
         print(f"[GAGAL] Upload database gagal: {error}")
 
 
-# ── Main Pipeline ───────────────────────────────────────────────────────────
+# MAIN
 if __name__ == "__main__":
-    print("=== Pipeline ETL — Analisis Sosial Ekonomi Indonesia ===\n")
+    print("--> Analisis Data Sosial Ekonomi Indonesia <--\n")
 
     extracted_data = extract_data()
 
@@ -134,4 +131,4 @@ if __name__ == "__main__":
 
     load_data(transformed_data)
 
-    print("\n=== Pipeline ETL Selesai ✅ ===")
+    print("\n--> Pipeline ETL Selesai <--")
