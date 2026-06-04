@@ -205,7 +205,7 @@ def _highlight_error(val):
         return "background-color: #FEF9C3; color: #854D0E"
     return ""
 
-styled = df_show.style.applymap(_highlight_error, subset=["Error (poin%)"])
+styled = df_show.style.map(_highlight_error, subset=["Error (poin%)"])
 st.dataframe(styled, use_container_width=True, hide_index=True, height=420)
 st.caption(
     f"Menampilkan {len(df_show):,} baris · "

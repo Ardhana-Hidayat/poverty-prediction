@@ -170,9 +170,8 @@ st.divider()
 # ── Radar Chart ───────────────────────────────────────────────────────────────
 st.markdown("### 🕸️ Perbandingan Cluster (Radar)")
 
-radar_raw = cluster_means[
-    ["% Kemiskinan", "Rata-rata Lama Sekolah (Thn)", "Tingkat Pengangguran (%)"]
-].copy()
+radar_raw = cluster_means[CLUSTERING_FEATURES].copy()
+radar_raw.columns = ["% Kemiskinan", "Rata-rata Lama Sekolah (Thn)", "Tingkat Pengangguran (%)"]
 # Normalisasi 0–1 untuk radar
 scaler_r = MinMaxScaler()
 radar_norm = pd.DataFrame(
