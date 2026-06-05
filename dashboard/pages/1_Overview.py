@@ -1,6 +1,6 @@
 """
-1_Overview.py — Eksplorasi Dataset
-====================================
+1_Overview.py — Tren Kemiskinan Indonesia
+==========================================
 Statistik deskriptif dan tren kemiskinan 30 provinsi Indonesia (2015–2025).
 """
 
@@ -21,30 +21,54 @@ st.set_page_config(
     layout="wide",
 )
 
-st.title("📋 Eksplorasi Data")
-st.caption("Statistik deskriptif dan tren kemiskinan 30 provinsi Indonesia (2015–2025)")
+st.title("📋 Tren Kemiskinan Indonesia")
+st.caption("Statistik dan tren kemiskinan 30 provinsi Indonesia (2015–2025)")
 
 # ── Load Data ─────────────────────────────────────────────────────────────────
-with st.spinner("Memuat data dari database..."):
+with st.spinner("Memuat data..."):
     df = load_raw_data()
 
 latest_year = int(df["Tahun"].max())
+first_year  = int(df["Tahun"].min())
 df_latest   = df[df["Tahun"] == latest_year]
+df_first    = df[df["Tahun"] == first_year]
+
+avg_latest      = df_latest["Persentase_Penduduk_Miskin"].mean()
+avg_first       = df_first["Persentase_Penduduk_Miskin"].mean()
+high_risk_count = int((df_latest["Persentase_Penduduk_Miskin"] > 15).sum())
+worst_prov      = df_latest.loc[df_latest["Persentase_Penduduk_Miskin"].idxmax(), "Provinsi"]
+best_prov       = df_latest.loc[df_latest["Persentase_Penduduk_Miskin"].idxmin(), "Provinsi"]
+trend_direction = "turun" if avg_latest < avg_first else "naik"
+trend_delta     = abs(avg_latest - avg_first)
+
+# ── Narasi Otomatis ───────────────────────────────────────────────────────────
+st.info(
+    f"📌 **Ringkasan {latest_year}:** Rata-rata kemiskinan nasional adalah **{avg_latest:.1f}%** — "
+    f"{trend_direction} {trend_delta:.1f} poin% dibanding {first_year}. "
+    f"Terdapat **{high_risk_count} provinsi** dengan kemiskinan di atas 15%. "
+    f"Kemiskinan tertinggi: **{worst_prov}**, terendah: **{best_prov}**."
+)
 
 # ── Metrik Ringkasan ──────────────────────────────────────────────────────────
-st.markdown("### 📊 Ringkasan Dataset")
+st.markdown("### 📊 Ringkasan Data")
 col1, col2, col3, col4 = st.columns(4)
-col1.metric("Total Provinsi",      df["Provinsi"].nunique())
-col2.metric("Rentang Tahun",       f"{int(df['Tahun'].min())} – {latest_year}")
-col3.metric("Rata-rata Kemiskinan Terkini",
-            f"{df_latest['Persentase_Penduduk_Miskin'].mean():.2f}%")
-col4.metric(f"Risiko Tinggi >15% ({latest_year})",
-            int((df_latest["Persentase_Penduduk_Miskin"] > 15).sum()))
+col1.metric("Jumlah Provinsi Dianalisis",    df["Provinsi"].nunique())
+col2.metric("Periode Data",                  f"{first_year} – {latest_year}")
+col3.metric(f"Rata-rata Kemiskinan ({latest_year})",
+            f"{avg_latest:.2f}%")
+col4.metric(f"Provinsi Kemiskinan >15% ({latest_year})",
+            high_risk_count)
 
 st.divider()
 
 # ── Tren Nasional ─────────────────────────────────────────────────────────────
 st.markdown("### 📈 Tren Kemiskinan Nasional per Tahun")
+st.caption(
+    "Garis biru = rata-rata nasional · "
+    "Area biru = rentang antara provinsi tertinggi dan terendah · "
+    "Garis merah putus-putus = batas risiko tinggi (15%)"
+)
+
 trend = (
     df.groupby("Tahun")["Persentase_Penduduk_Miskin"]
     .agg(["mean", "min", "max"])
@@ -53,23 +77,21 @@ trend = (
 trend.columns = ["Tahun", "Rata-rata", "Minimum", "Maksimum"]
 
 fig_trend = go.Figure()
-# Area antara min dan max
 fig_trend.add_trace(go.Scatter(
     x=trend["Tahun"], y=trend["Maksimum"],
     fill=None, mode="lines",
     line=dict(color="rgba(37,99,235,0.0)"),
-    name="Maksimum", showlegend=True,
-    hovertemplate="Maks: %{y:.2f}%<extra></extra>",
+    name="Tertinggi", showlegend=True,
+    hovertemplate="Tertinggi: %{y:.2f}%<extra></extra>",
 ))
 fig_trend.add_trace(go.Scatter(
     x=trend["Tahun"], y=trend["Minimum"],
     fill="tonexty", mode="lines",
     fillcolor="rgba(37,99,235,0.10)",
     line=dict(color="rgba(37,99,235,0.0)"),
-    name="Minimum", showlegend=True,
-    hovertemplate="Min: %{y:.2f}%<extra></extra>",
+    name="Terendah", showlegend=True,
+    hovertemplate="Terendah: %{y:.2f}%<extra></extra>",
 ))
-# Garis rata-rata
 fig_trend.add_trace(go.Scatter(
     x=trend["Tahun"], y=trend["Rata-rata"],
     mode="lines+markers",
@@ -78,6 +100,11 @@ fig_trend.add_trace(go.Scatter(
     name="Rata-rata Nasional",
     hovertemplate="Rata-rata: %{y:.2f}%<extra></extra>",
 ))
+fig_trend.add_hline(
+    y=15, line_dash="dash", line_color="#EF4444",
+    annotation_text="Batas Risiko Tinggi (15%)",
+    annotation_position="bottom right",
+)
 fig_trend.update_layout(
     xaxis_title="Tahun",
     yaxis_title="Persentase Kemiskinan (%)",
@@ -90,13 +117,20 @@ fig_trend.update_layout(
 )
 st.plotly_chart(fig_trend, use_container_width=True)
 
+tahun_peak = int(trend.loc[trend["Rata-rata"].idxmax(), "Tahun"])
+st.caption(
+    f"💡 Secara nasional, kemiskinan cenderung **{trend_direction}** dari {avg_first:.1f}% "
+    f"({first_year}) menjadi {avg_latest:.1f}% ({latest_year}). "
+    f"Puncak tertinggi terjadi pada tahun {tahun_peak}."
+)
+
 st.divider()
 
 # ── Top & Bottom Provinces ────────────────────────────────────────────────────
 col_a, col_b = st.columns(2)
 
 with col_a:
-    st.markdown(f"### 🔴 10 Provinsi Termiskin ({latest_year})")
+    st.markdown(f"### 🔴 10 Provinsi Kemiskinan Tertinggi ({latest_year})")
     top10 = (
         df_latest.nlargest(10, "Persentase_Penduduk_Miskin")
         [["Provinsi", "Persentase_Penduduk_Miskin"]]
@@ -120,7 +154,7 @@ with col_a:
     st.plotly_chart(fig_top, use_container_width=True)
 
 with col_b:
-    st.markdown(f"### 🟢 10 Provinsi Terendah Kemiskinan ({latest_year})")
+    st.markdown(f"### 🟢 10 Provinsi Kemiskinan Terendah ({latest_year})")
     bot10 = (
         df_latest.nsmallest(10, "Persentase_Penduduk_Miskin")
         [["Provinsi", "Persentase_Penduduk_Miskin"]]
@@ -145,11 +179,11 @@ with col_b:
 
 st.divider()
 
-# ── Tren Per Provinsi (Filter) ────────────────────────────────────────────────
-st.markdown("### 🔍 Tren Per Provinsi")
+# ── Tren Per Provinsi ─────────────────────────────────────────────────────────
+st.markdown("### 🔍 Bandingkan Antar Provinsi")
 all_provinces = sorted(df["Provinsi"].unique())
 selected = st.multiselect(
-    "Pilih provinsi untuk dibandingkan:",
+    "Pilih provinsi yang ingin dibandingkan:",
     options=all_provinces,
     default=all_provinces[:5],
 )
@@ -181,7 +215,7 @@ else:
 st.divider()
 
 # ── Data Table ────────────────────────────────────────────────────────────────
-with st.expander("📄 Lihat Data Mentah"):
+with st.expander("📄 Lihat Data Lengkap"):
     col_f1, col_f2 = st.columns(2)
     with col_f1:
         tahun_opts = ["Semua"] + sorted(df["Tahun"].unique().tolist(), reverse=True)
@@ -196,5 +230,24 @@ with st.expander("📄 Lihat Data Mentah"):
     if prov_f != "Semua":
         df_show = df_show[df_show["Provinsi"] == prov_f]
 
+    # Kolom Status berwarna
+    def get_status(val):
+        if val > 15:
+            return "🔴 Tinggi (>15%)"
+        elif val > 10:
+            return "🟡 Sedang (10–15%)"
+        else:
+            return "🟢 Rendah (≤10%)"
+
+    df_show = df_show.copy()
+    df_show.insert(
+        df_show.columns.get_loc("Persentase_Penduduk_Miskin") + 1,
+        "Status",
+        df_show["Persentase_Penduduk_Miskin"].apply(get_status),
+    )
+
     st.dataframe(df_show, use_container_width=True, height=350, hide_index=True)
-    st.caption(f"Menampilkan {len(df_show):,} dari {len(df):,} baris")
+    st.caption(
+        f"Menampilkan {len(df_show):,} dari {len(df):,} baris · "
+        "🔴 Tinggi >15% | 🟡 Sedang 10–15% | 🟢 Rendah ≤10%"
+    )

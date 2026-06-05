@@ -89,16 +89,20 @@ def load_raw_data() -> pd.DataFrame:
             st.stop()
         df = pd.read_csv(CSV_FALLBACK)
 
-    # Filter provinsi Papua DOB & structural break
-    mask_dob = df["Provinsi"].isin(PAPUA_DOB)
+    # Normalisasi format nama provinsi DULU (Title Case)
+    # agar filter string di bawah tidak gagal akibat perbedaan huruf besar/kecil
+    df["Provinsi"] = df["Provinsi"].str.strip().str.title()
+
+    # Filter provinsi Papua DOB & structural break (gunakan Title Case)
+    papua_dob_title = [p.title() for p in PAPUA_DOB]
+    sb_provinsi     = STRUCTURAL_BREAK["provinsi"].title()
+
+    mask_dob = df["Provinsi"].isin(papua_dob_title)
     mask_sb  = (
-        (df["Provinsi"] == STRUCTURAL_BREAK["provinsi"]) &
+        (df["Provinsi"] == sb_provinsi) &
         (df["Tahun"]    >= STRUCTURAL_BREAK["tahun_min"])
     )
     df = df[~mask_dob & ~mask_sb].reset_index(drop=True)
-
-    # Normalisasi format nama provinsi (Title Case)
-    df["Provinsi"] = df["Provinsi"].str.strip().str.title()
 
     return df
 
