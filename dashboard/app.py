@@ -38,6 +38,34 @@ df     = load_raw_data()
 model  = load_model()
 df_res = predict_regression(df, model)
 
+# tren kemiskinan nasional
+st.markdown("## Tren Kemiskinan Nasional")
+df_trend = df.groupby("Tahun")[TARGET].mean().reset_index()
+
+fig_trend = px.line(
+    df_trend,
+    x="Tahun", y=TARGET,
+    markers=True,
+    text=df_trend[TARGET].round(2).astype(str) + "%",
+)
+fig_trend.update_traces(
+    line=dict(color="#10B981", width=3), 
+    marker=dict(size=10, color="#047857"),
+    textposition="top center"
+)
+fig_trend.update_layout(
+    yaxis_title="Rata-Rata Kemiskinan (%)",
+    xaxis_title="Tahun",
+    height=360,
+    plot_bgcolor="white", paper_bgcolor="white",
+    yaxis=dict(gridcolor="#E2E8F0"),
+    xaxis=dict(gridcolor="#E2E8F0", tickmode="linear"),
+    margin=dict(l=0, r=0, t=20, b=20),
+)
+st.plotly_chart(fig_trend, use_container_width=True)
+
+st.divider()
+
 # evaluasi model
 st.markdown("## Evaluasi Model")
 
