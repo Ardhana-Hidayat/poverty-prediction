@@ -1,1 +1,1 @@
-# utils package
+# dashboard.utils package

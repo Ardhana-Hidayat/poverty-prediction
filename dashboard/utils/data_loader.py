@@ -30,12 +30,8 @@ PAPUA_DOB = [
 ]
 STRUCTURAL_BREAK = {"provinsi": "PAPUA", "tahun_min": 2024}
 
-MODEL_PATHS = {
-    "regresi"    : os.path.join(_PROJECT_ROOT, "model", "regresi",    "model_regresi_rf.pkl"),
-    "klasifikasi": os.path.join(_PROJECT_ROOT, "model", "klasifikasi","model_klasifikasi_lr.pkl"),
-    "clustering" : os.path.join(_PROJECT_ROOT, "model", "clustering", "model_clustering_kmeans.pkl"),
-}
-CSV_FALLBACK = os.path.join(_PROJECT_ROOT, "data", "dataset_cleaned.csv")
+MODEL_PATH_REGRESI = os.path.join(_PROJECT_ROOT, "model", "model_regresi_rf.pkl")
+CSV_FALLBACK       = os.path.join(_PROJECT_ROOT, "data", "dataset_cleaned.csv")
 
 
 # ── Database Engine ───────────────────────────────────────────────────────────
@@ -89,11 +85,10 @@ def load_raw_data() -> pd.DataFrame:
             st.stop()
         df = pd.read_csv(CSV_FALLBACK)
 
-    # Normalisasi format nama provinsi DULU (Title Case)
-    # agar filter string di bawah tidak gagal akibat perbedaan huruf besar/kecil
+    # Normalisasi format nama provinsi (Title Case)
     df["Provinsi"] = df["Provinsi"].str.strip().str.title()
 
-    # Filter provinsi Papua DOB & structural break (gunakan Title Case)
+    # Filter provinsi Papua DOB & structural break
     papua_dob_title = [p.title() for p in PAPUA_DOB]
     sb_provinsi     = STRUCTURAL_BREAK["provinsi"].title()
 
@@ -109,15 +104,15 @@ def load_raw_data() -> pd.DataFrame:
 
 # ── Load Model ────────────────────────────────────────────────────────────────
 @st.cache_resource(show_spinner=False)
-def load_model(model_name: str):
+def load_model() -> object:
     """
-    Muat model .pkl dari disk.
-    model_name: 'regresi' | 'klasifikasi' | 'clustering'
+    Muat model Random Forest Regressor dari disk.
+    Path: model/model_regresi_rf.pkl
     """
-    path = MODEL_PATHS.get(model_name)
-    if path is None or not os.path.exists(path):
-        st.error(f"❌ File model tidak ditemukan: {path}")
+    if not os.path.exists(MODEL_PATH_REGRESI):
+        st.error(f"❌ File model tidak ditemukan: {MODEL_PATH_REGRESI}")
+        st.error("Jalankan terlebih dahulu: python model/model_regresi.py")
         st.stop()
 
-    with open(path, "rb") as f:
+    with open(MODEL_PATH_REGRESI, "rb") as f:
         return pickle.load(f)

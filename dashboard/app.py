@@ -1,227 +1,203 @@
 """
-app.py — Entry point Dashboard Streamlit
-=========================================
-Halaman utama (Home) dashboard prediksi kemiskinan Indonesia.
-Jalankan dengan: streamlit run dashboard/app.py
+app.py — Dashboard Prediksi Kemiskinan Indonesia
+=================================================
+Single-page Streamlit app.
+Model  : Random Forest Regressor
+Fitur  : Rata_Rata_Lama_Sekolah, Tingkat_Pengangguran_Terbuka, Tahun
+Split  : 80/20 random (shuffle=True, random_state=42)
 """
 
-import os
 import sys
+import os
 
-# Tambahkan direktori dashboard ke path agar utils bisa diimport dari pages
-_DASHBOARD_DIR = os.path.dirname(os.path.abspath(__file__))
-if _DASHBOARD_DIR not in sys.path:
-    sys.path.insert(0, _DASHBOARD_DIR)
-
+import numpy as np
+import pandas as pd
+import plotly.express as px
+import plotly.graph_objects as go
 import streamlit as st
+from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 
-# ── Konfigurasi Halaman ───────────────────────────────────────────────────────
+# ── Path Setup ────────────────────────────────────────────────────────────────
+_ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+if _ROOT_DIR not in sys.path:
+    sys.path.insert(0, _ROOT_DIR)
+
+from dashboard.utils.data_loader         import load_raw_data, load_model
+from dashboard.utils.feature_engineering import predict_regression
+
+# ── Konfigurasi ───────────────────────────────────────────────────────────────
 st.set_page_config(
-    page_title="Dashboard Kemiskinan Indonesia",
+    page_title="Prediksi Kemiskinan Indonesia",
     page_icon="📊",
     layout="wide",
-    initial_sidebar_state="expanded",
 )
 
-# ── Global CSS ────────────────────────────────────────────────────────────────
-st.markdown("""
-<style>
-    .block-container { padding-top: 2.5rem; padding-bottom: 2rem; }
-    [data-testid="stMetric"] {
-        background-color: #F8FAFC;
-        border: 1px solid #E2E8F0;
-        border-radius: 12px;
-        padding: 1rem 1.5rem;
-    }
-    [data-testid="stSidebar"] { background-color: #F8FAFC; }
+st.title("📊 Prediksi Tingkat Kemiskinan Indonesia")
+st.caption(
+    "Model: Random Forest Regressor · "
+    "Fitur: RLS, TPT, Tahun · "
+    "Split: 80/20 random · "
+    "Data: BPS 2015–2025"
+)
 
-    .card {
-        background: #EFF6FF;
-        border-left: 4px solid #2563EB;
-        border-radius: 10px;
-        padding: 1rem 1.25rem;
-        margin-bottom: 0.75rem;
-    }
-    .card h4 { margin: 0 0 0.3rem 0; color: #1E40AF; }
-    .card p  { margin: 0; color: #374151; font-size: 0.92rem; }
+# ── Load ──────────────────────────────────────────────────────────────────────
+df     = load_raw_data()
+model  = load_model()
+df_res = predict_regression(df, model)
 
-    .card-red {
-        background: #FFF1F2;
-        border-left: 4px solid #E11D48;
-        border-radius: 10px;
-        padding: 1rem 1.25rem;
-        margin-bottom: 0.75rem;
-    }
-    .card-red h4 { margin: 0 0 0.3rem 0; color: #BE123C; }
-    .card-red p  { margin: 0; color: #374151; font-size: 0.92rem; }
+# ═════════════════════════════════════════════════════════════════════════════
+# BAGIAN 1 — EVALUASI MODEL
+# ═════════════════════════════════════════════════════════════════════════════
+st.markdown("## 📈 Evaluasi Model")
 
-    .card-green {
-        background: #F0FDF4;
-        border-left: 4px solid #16A34A;
-        border-radius: 10px;
-        padding: 1rem 1.25rem;
-        margin-bottom: 0.75rem;
-    }
-    .card-green h4 { margin: 0 0 0.3rem 0; color: #15803D; }
-    .card-green p  { margin: 0; color: #374151; font-size: 0.92rem; }
+y_true = df_res["Aktual (%)"].values
+y_pred = df_res["Prediksi (%)"].values
 
-    .step-box {
-        background: #F8FAFC;
-        border: 1px solid #E2E8F0;
-        border-radius: 12px;
-        padding: 1.4rem 1.2rem;
-        text-align: center;
-        height: 100%;
-    }
-    .step-num   { font-size: 2.2rem; font-weight: 800; color: #2563EB; }
-    .step-title { font-size: 1.05rem; font-weight: 600; color: #1E293B; margin: 0.4rem 0 0.3rem; }
-    .step-desc  { font-size: 0.88rem; color: #64748B; }
+rmse = np.sqrt(mean_squared_error(y_true, y_pred))
+mae  = mean_absolute_error(y_true, y_pred)
+r2   = r2_score(y_true, y_pred)
 
-    .hero { margin-bottom: 1.5rem; }
-    .hero h1 { font-size: 2.2rem; font-weight: 700; color: #1E293B; margin-bottom: 0.25rem; }
-    .hero p  { font-size: 1.05rem; color: #64748B; }
-
-    .badge {
-        display: inline-block;
-        background: #DBEAFE;
-        color: #1E40AF;
-        border-radius: 9999px;
-        padding: 0.2rem 0.75rem;
-        font-size: 0.82rem;
-        font-weight: 600;
-        margin-right: 0.4rem;
-    }
-</style>
-""", unsafe_allow_html=True)
-
-# ── Hero ──────────────────────────────────────────────────────────────────────
-st.markdown("""
-<div class="hero">
-    <h1>📊 Dashboard Prediksi Kemiskinan Indonesia</h1>
-    <p>Analisis sosial-ekonomi 30 provinsi Indonesia (2015–2025) berbasis <b>Machine Learning</b></p>
-    <span class="badge">Data Engineering</span>
-    <span class="badge">Semester 4</span>
-    <span class="badge">BPS Indonesia</span>
-</div>
-""", unsafe_allow_html=True)
-
-st.divider()
-
-# ── Cara Menggunakan ──────────────────────────────────────────────────────────
-st.markdown("### 🗺️ Cara Menggunakan Dashboard Ini")
-c1, c2, c3 = st.columns(3)
-
-with c1:
-    st.markdown("""
-    <div class="step-box">
-        <div class="step-num">1️⃣</div>
-        <div class="step-title">Pilih Halaman</div>
-        <div class="step-desc">Gunakan menu di sidebar kiri untuk berpindah antar topik analisis.</div>
-    </div>
-    """, unsafe_allow_html=True)
-
-with c2:
-    st.markdown("""
-    <div class="step-box">
-        <div class="step-num">2️⃣</div>
-        <div class="step-title">Baca Kesimpulan Utama</div>
-        <div class="step-desc">Setiap halaman memiliki kotak ringkasan di bagian atas — mulailah dari sana.</div>
-    </div>
-    """, unsafe_allow_html=True)
-
-with c3:
-    st.markdown("""
-    <div class="step-box">
-        <div class="step-num">3️⃣</div>
-        <div class="step-title">Cari Provinsi Anda</div>
-        <div class="step-desc">Gunakan filter tabel di setiap halaman untuk mencari data provinsi tertentu.</div>
-    </div>
-    """, unsafe_allow_html=True)
-
-st.divider()
-
-# ── Kemampuan Dashboard ───────────────────────────────────────────────────────
-st.markdown("### 🤖 Apa yang Bisa Dashboard Ini Lakukan?")
 col1, col2, col3 = st.columns(3)
+col1.metric("R²",   f"{r2:.4f}",
+            help="Koefisien determinasi — semakin mendekati 1 semakin baik")
+col2.metric("MAE",  f"{mae:.4f} poin%",
+            help="Rata-rata kesalahan absolut prediksi")
+col3.metric("RMSE", f"{rmse:.4f} poin%",
+            help="Root Mean Square Error — sensitif terhadap kesalahan besar")
 
+# ── Scatter + Feature Importance ─────────────────────────────────────────────
+col_sc, col_imp = st.columns(2)
+
+with col_sc:
+    st.markdown("### Aktual vs Prediksi")
+    fig_sc = px.scatter(
+        df_res,
+        x="Aktual (%)", y="Prediksi (%)",
+        hover_data=["Provinsi", "Tahun", "Error (poin%)"],
+        opacity=0.7,
+        color_discrete_sequence=["#2563EB"],
+    )
+    min_val = min(y_true.min(), y_pred.min()) - 1
+    max_val = max(y_true.max(), y_pred.max()) + 1
+    fig_sc.add_shape(
+        type="line",
+        x0=min_val, y0=min_val,
+        x1=max_val, y1=max_val,
+        line=dict(color="#EF4444", dash="dash"),
+    )
+    fig_sc.add_annotation(
+        x=max_val, y=max_val,
+        text="Prediksi Sempurna",
+        showarrow=False,
+        font=dict(color="#EF4444", size=11),
+        xanchor="right",
+    )
+    fig_sc.update_layout(
+        height=360,
+        plot_bgcolor="white", paper_bgcolor="white",
+        yaxis=dict(gridcolor="#E2E8F0"),
+        xaxis=dict(gridcolor="#E2E8F0"),
+    )
+    st.plotly_chart(fig_sc, use_container_width=True)
+
+with col_imp:
+    st.markdown("### Kontribusi Variabel")
+    labels    = ["Rata-Rata Lama Sekolah", "Tingkat Pengangguran", "Tahun"]
+    values    = model.feature_importances_
+    top_label = labels[int(np.argmax(values))]
+
+    fig_imp = go.Figure(go.Bar(
+        x=values, y=labels,
+        orientation="h",
+        marker_color=["#2563EB", "#7C3AED", "#059669"],
+        text=[f"{v:.1%}" for v in values],
+        textposition="outside",
+    ))
+    fig_imp.update_layout(
+        xaxis=dict(title="Importance", tickformat=".0%", gridcolor="#E2E8F0"),
+        yaxis=dict(autorange="reversed"),
+        height=360,
+        plot_bgcolor="white", paper_bgcolor="white",
+        margin=dict(l=0, r=60, t=10, b=20),
+    )
+    st.plotly_chart(fig_imp, use_container_width=True)
+    st.caption(f"💡 Variabel paling berpengaruh: **{top_label}**")
+
+# ── Tabel Prediksi ────────────────────────────────────────────────────────────
+with st.expander("📄 Lihat Tabel Detail Prediksi"):
+    col_f1, col_f2 = st.columns(2)
+    with col_f1:
+        prov_opts = ["Semua"] + sorted(df_res["Provinsi"].unique().tolist())
+        prov_sel  = st.selectbox("Filter Provinsi", prov_opts)
+    with col_f2:
+        tahun_opts = ["Semua"] + sorted(df_res["Tahun"].unique().tolist(), reverse=True)
+        tahun_sel  = st.selectbox("Filter Tahun", tahun_opts)
+
+    df_show = df_res.copy()
+    if prov_sel  != "Semua":
+        df_show = df_show[df_show["Provinsi"] == prov_sel]
+    if tahun_sel != "Semua":
+        df_show = df_show[df_show["Tahun"] == int(tahun_sel)]
+
+    def _highlight(val):
+        if abs(val) > 2.5: return "background-color:#FEE2E2;color:#991B1B"
+        if abs(val) > 1.0: return "background-color:#FEF9C3;color:#854D0E"
+        return ""
+
+    st.dataframe(
+        df_show.style.map(_highlight, subset=["Error (poin%)"]),
+        use_container_width=True, hide_index=True, height=360,
+    )
+    st.caption(
+        f"{len(df_show):,} baris · "
+        "🔴 Error >2.5 poin% | 🟡 Error >1.0 poin%"
+    )
+
+st.divider()
+
+# ═════════════════════════════════════════════════════════════════════════════
+# BAGIAN 2 — PREDIKSI INTERAKTIF
+# ═════════════════════════════════════════════════════════════════════════════
+st.markdown("## 🔮 Prediksi Interaktif")
+st.caption("Masukkan nilai RLS dan TPT untuk memperoleh estimasi tingkat kemiskinan.")
+
+col1, col2, col3 = st.columns(3)
 with col1:
-    st.markdown("""
-    <div class="card">
-        <h4>📈 Prediksi Angka Kemiskinan</h4>
-        <p>Memperkirakan <b>berapa persen penduduk miskin</b> di setiap provinsi
-        berdasarkan data pendidikan dan ketenagakerjaan tahun-tahun sebelumnya.</p>
-    </div>
-    """, unsafe_allow_html=True)
-
+    rls = st.number_input(
+        "Rata-Rata Lama Sekolah (tahun)",
+        min_value=0.0, max_value=20.0,
+        value=8.5, step=0.1,
+    )
 with col2:
-    st.markdown("""
-    <div class="card-red">
-        <h4>🔴 Deteksi Daerah Berisiko</h4>
-        <p>Mengidentifikasi provinsi yang <b>berisiko kemiskinan tinggi</b> (di atas 15%)
-        — seperti sistem peringatan dini untuk pengambil kebijakan.</p>
-    </div>
-    """, unsafe_allow_html=True)
-
+    tpt = st.number_input(
+        "Tingkat Pengangguran Terbuka (%)",
+        min_value=0.0, max_value=20.0,
+        value=5.0, step=0.1,
+    )
 with col3:
-    st.markdown("""
-    <div class="card-green">
-        <h4>🔵 Peta Segmentasi Provinsi</h4>
-        <p>Mengelompokkan provinsi ke dalam <b>segmen sosial-ekonomi</b> agar
-        kebijakan dapat dirancang lebih tepat sasaran per kelompok.</p>
-    </div>
-    """, unsafe_allow_html=True)
+    tahun = st.number_input(
+        "Tahun",
+        min_value=2015, max_value=2035,
+        value=2025, step=1,
+    )
 
-st.divider()
+if st.button("🔍 Prediksi", use_container_width=True, type="primary"):
+    input_df = pd.DataFrame([{
+        "Rata_Rata_Lama_Sekolah"      : rls,
+        "Tingkat_Pengangguran_Terbuka": tpt,
+        "Tahun"                       : tahun,
+    }])
+    hasil = model.predict(input_df)[0]
 
-# ── Navigasi ──────────────────────────────────────────────────────────────────
-st.markdown("### 📋 Halaman yang Tersedia")
-col_nav, col_info = st.columns([1.2, 1])
+    ref      = df[df["Tahun"] == tahun]["Persentase_Penduduk_Miskin"]
+    ref_mean = ref.mean() if len(ref) > 0 else None
 
-with col_nav:
-    st.markdown("""
-    | Halaman | Isi |
-    |---------|-----|
-    | 🏠 **Home** | Halaman ini — panduan penggunaan |
-    | 📋 **1 Overview** | Tren kemiskinan nasional & per provinsi |
-    | 📈 **2 Prediksi Angka** | Seberapa akurat prediksi model? |
-    | 🔴 **3 Deteksi Risiko** | Mana daerah yang perlu diwaspadai? |
-    | 🔵 **4 Segmentasi** | Kelompok provinsi & karakteristiknya |
-    """)
+    st.success(f"### Prediksi Kemiskinan: **{hasil:.2f}%**")
 
-with col_info:
-    st.markdown("""
-    **Tentang Data:**
-    - 📍 **30 Provinsi** (Papua DOB & structural break dikecualikan)
-    - 📅 **Rentang:** 2015–2025
-    - 💾 **Sumber:** BPS Indonesia via Aiven PostgreSQL
-    - 📊 **Indikator:** Kemiskinan, Pendidikan (RLS), Pengangguran (TPT)
-    """)
-
-st.divider()
-
-# ── FAQ ───────────────────────────────────────────────────────────────────────
-with st.expander("❓ Pertanyaan yang Sering Ditanyakan"):
-    st.markdown("""
-    **Apa yang dimaksud "kemiskinan > 15%"?**
-    > Artinya lebih dari 15 dari setiap 100 penduduk di provinsi tersebut hidup di bawah garis kemiskinan.
-    > Angka ini digunakan sebagai ambang batas "Risiko Tinggi" dalam dashboard ini.
-
-    ---
-    **Apa itu RLS dan TPT?**
-    > - **RLS (Rata-rata Lama Sekolah):** Rata-rata jumlah tahun penduduk usia 25+ menempuh pendidikan formal.
-    > - **TPT (Tingkat Pengangguran Terbuka):** Persentase angkatan kerja yang sedang aktif mencari pekerjaan.
-
-    ---
-    **Mengapa Papua tidak termasuk?**
-    > Empat provinsi pemekaran Papua 2022 (Papua Barat Daya, Papua Pegunungan, Papua Selatan, Papua Tengah)
-    > dikecualikan karena datanya merupakan perkiraan, bukan hasil survei langsung.
-    > Papua induk sejak 2024 juga dikecualikan karena terjadi perubahan struktur data yang signifikan.
-
-    ---
-    **Seberapa akurat prediksi model ini?**
-    > Model prediksi angka rata-rata meleset sekitar 1–2 poin persen dari angka kemiskinan aktual.
-    > Lihat halaman **📈 Prediksi Angka** untuk melihat detail akurasi per tahun dan per provinsi.
-    """)
-
-st.divider()
-st.caption("Proyek Data Engineering — Semester 4 · Dataset: BPS Indonesia (2015–2025)")
+    if ref_mean is not None:
+        selisih = hasil - ref_mean
+        arah    = "di atas" if selisih > 0 else "di bawah"
+        st.caption(
+            f"Rata-rata nasional tahun {tahun}: **{ref_mean:.2f}%** — "
+            f"prediksi ini **{abs(selisih):.2f} poin% {arah}** rata-rata."
+        )
