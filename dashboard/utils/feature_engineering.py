@@ -1,22 +1,10 @@
-"""
-feature_engineering.py
-======================
-Fungsi prediksi batch untuk seluruh dataset.
-"""
-
 import pandas as pd
 
 from config.constants import FEATURES, TARGET
 
-
 def predict_regression(df: pd.DataFrame, model) -> pd.DataFrame:
-    """
-    Jalankan model ke seluruh data dan kembalikan tabel perbandingan.
 
-    Returns
-    -------
-    DataFrame: Tahun, Provinsi, Aktual (%), Prediksi (%), Error (poin%)
-    """
+    # jalankan model ke seluruh data dan kembalikan tabel perbandingan.
     df_feat = df[["Provinsi"] + FEATURES + [TARGET]].dropna().reset_index(drop=True)
 
     y_pred = model.predict(df_feat[FEATURES])

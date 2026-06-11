@@ -48,7 +48,7 @@ def transform(data: dict[str, pd.DataFrame]) -> pd.DataFrame:
         .reset_index(drop=True)
     )
 
-    print(f"  [OK] Dataset gabungan: {merged.shape[0]} baris × {merged.shape[1]} kolom")
+    print(f"  [OK] Dataset gabungan: {merged.shape[0]} baris × {merged.shape[1]} kolom\n")
     return merged
 
 # load

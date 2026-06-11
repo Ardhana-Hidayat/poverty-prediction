@@ -43,7 +43,7 @@ X_train, X_test, y_train, y_test = train_test_split(
     X, y, test_size=0.2, random_state=42, shuffle=True
 )
 
-print(f"Training : {len(X_train)} baris | Testing : {len(X_test)} baris")
+print(f"Training : 80% = {len(X_train)} baris | Testing : 20% = {len(X_test)} baris")
 
 # training
 model = RandomForestRegressor(
@@ -52,6 +52,7 @@ model = RandomForestRegressor(
     min_samples_leaf=3,
     random_state=42,
 )
+
 model.fit(X_train, y_train)
 
 # evaluasi

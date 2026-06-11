@@ -7,6 +7,8 @@ import plotly.express as px
 import plotly.graph_objects as go
 import streamlit as st
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
+from sklearn.model_selection import train_test_split
+from config.constants import FEATURES, TARGET
 
 # path setup
 _ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
@@ -37,22 +39,43 @@ model  = load_model()
 df_res = predict_regression(df, model)
 
 # evaluasi model
-st.markdown("## 📈 Evaluasi Model")
+st.markdown("## Evaluasi Model")
 
-y_true = df_res["Aktual (%)"].values
-y_pred = df_res["Prediksi (%)"].values
+# Hitung metrik 100%
+y_true_all = df_res["Aktual (%)"].values
+y_pred_all = df_res["Prediksi (%)"].values
+rmse_all = np.sqrt(mean_squared_error(y_true_all, y_pred_all))
+mae_all  = mean_absolute_error(y_true_all, y_pred_all)
+r2_all   = r2_score(y_true_all, y_pred_all)
 
-rmse = np.sqrt(mean_squared_error(y_true, y_pred))
-mae  = mean_absolute_error(y_true, y_pred)
-r2   = r2_score(y_true, y_pred)
+# Hitung metrik 20%
+df_feat = df[["Provinsi"] + FEATURES + [TARGET]].dropna().reset_index(drop=True)
+X = df_feat[FEATURES]
+y = df_feat[TARGET]
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y, test_size=0.2, random_state=42, shuffle=True
+)
+y_pred_test = model.predict(X_test)
+rmse_test = np.sqrt(mean_squared_error(y_test, y_pred_test))
+mae_test  = mean_absolute_error(y_test, y_pred_test)
+r2_test   = r2_score(y_test, y_pred_test)
 
-col1, col2, col3 = st.columns(3)
-col1.metric("R²",   f"{r2:.4f}",
-            help="Koefisien determinasi — semakin mendekati 1 semakin baik")
-col2.metric("MAE",  f"{mae:.4f} poin%",
-            help="Rata-rata kesalahan absolut prediksi")
-col3.metric("RMSE", f"{rmse:.4f} poin%",
-            help="Root Mean Square Error — sensitif terhadap kesalahan besar")
+# Tampilkan berdampingan
+col_eval1, col_eval2 = st.columns(2)
+
+with col_eval1:
+    st.markdown("#### Seluruh Data (100%)")
+    c1, c2, c3 = st.columns(3)
+    c1.metric("R²", f"{r2_all:.4f}")
+    c2.metric("MAE", f"{mae_all:.4f}")
+    c3.metric("RMSE", f"{rmse_all:.4f}")
+
+with col_eval2:
+    st.markdown("#### Data Testing (20%)")
+    c4, c5, c6 = st.columns(3)
+    c4.metric("R²", f"{r2_test:.4f}")
+    c5.metric("MAE", f"{mae_test:.4f}")
+    c6.metric("RMSE", f"{rmse_test:.4f}")
 
 # scatter + feature importance
 col_sc, col_imp = st.columns(2)
@@ -66,8 +89,8 @@ with col_sc:
         opacity=0.7,
         color_discrete_sequence=["#2563EB"],
     )
-    min_val = min(y_true.min(), y_pred.min()) - 1
-    max_val = max(y_true.max(), y_pred.max()) + 1
+    min_val = min(y_true_all.min(), y_pred_all.min()) - 1
+    max_val = max(y_true_all.max(), y_pred_all.max()) + 1
     fig_sc.add_shape(
         type="line",
         x0=min_val, y0=min_val,
@@ -110,10 +133,10 @@ with col_imp:
         margin=dict(l=0, r=60, t=10, b=20),
     )
     st.plotly_chart(fig_imp, use_container_width=True)
-    st.caption(f"💡 Variabel paling berpengaruh: **{top_label}**")
+    st.caption(f"Variabel paling berpengaruh: **{top_label}**")
 
 # tabel prediksi
-with st.expander("📄 Lihat Tabel Detail Prediksi"):
+with st.expander("Lihat Tabel Detail Prediksi"):
     col_f1, col_f2 = st.columns(2)
     with col_f1:
         prov_opts = ["Semua"] + sorted(df_res["Provinsi"].unique().tolist())
@@ -128,24 +151,16 @@ with st.expander("📄 Lihat Tabel Detail Prediksi"):
     if tahun_sel != "Semua":
         df_show = df_show[df_show["Tahun"] == int(tahun_sel)]
 
-    def _highlight(val):
-        if abs(val) > 2.5: return "background-color:#FEE2E2;color:#991B1B"
-        if abs(val) > 1.0: return "background-color:#FEF9C3;color:#854D0E"
-        return ""
-
     st.dataframe(
-        df_show.style.map(_highlight, subset=["Error (poin%)"]),
+        df_show,
         use_container_width=True, hide_index=True, height=360,
     )
-    st.caption(
-        f"{len(df_show):,} baris · "
-        "🔴 Error >2.5 poin% | 🟡 Error >1.0 poin%"
-    )
+
 
 st.divider()
 
 # prediksi interaktif
-st.markdown("## 🔮 Prediksi Interaktif")
+st.markdown("## Prediksi Interaktif")
 st.caption("Masukkan nilai RLS dan TPT untuk memperoleh estimasi tingkat kemiskinan.")
 
 col1, col2, col3 = st.columns(3)
@@ -168,7 +183,7 @@ with col3:
         value=2025, step=1,
     )
 
-if st.button("🔍 Prediksi", use_container_width=True, type="primary"):
+if st.button("Prediksi", use_container_width=True, type="primary"):
     input_df = pd.DataFrame([{
         "Rata_Rata_Lama_Sekolah"      : rls,
         "Tingkat_Pengangguran_Terbuka": tpt,
