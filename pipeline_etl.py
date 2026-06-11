@@ -2,14 +2,13 @@ import os
 import sys
 import pandas as pd
 
-sys.path.append(os.path.abspath(os.path.dirname(__file__)))
+sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
 
-from config.database import get_engine
+from config.constants import CSV_PATH, DATABASE_TABLE
+from config.database  import get_engine
 
 # konfigurasi
-CLEAN_DATA_DIR      = "data/processed"
-OUTPUT_CSV_PATH     = "data/dataset_cleaned.csv"
-DATABASE_TABLE_NAME = "poverty_panel_data"
+CLEAN_DATA_DIR = "data/processed"
 
 DATASET_FILES = {
     "education"    : "rata_rata_lama_sekolah.csv",
@@ -23,7 +22,7 @@ COLUMN_RENAME_MAP = {
     "Persentase_Kemiskinan" : "Persentase_Penduduk_Miskin",
 }
 
-# ── Extract ───────────────────────────────────────────────────────────────────
+# extract
 def extract() -> dict[str, pd.DataFrame]:
     print("EXTRACT:")
     data = {}
@@ -36,49 +35,38 @@ def extract() -> dict[str, pd.DataFrame]:
         print(f"  [OK] {filename:<35} {df.shape[0]} baris × {df.shape[1]} kolom")
     return data
 
-# ── Transform ─────────────────────────────────────────────────────────────────
+# transform
 def transform(data: dict[str, pd.DataFrame]) -> pd.DataFrame:
     print("\nTRANSFORM:")
 
-    merged = data["education"].merge(
-        data["unemployment"], on=["Provinsi", "Tahun"], how="inner"
-    ).merge(
-        data["poverty"], on=["Provinsi", "Tahun"], how="inner"
+    merged = (
+        data["education"]
+        .merge(data["unemployment"], on=["Provinsi", "Tahun"], how="inner")
+        .merge(data["poverty"],      on=["Provinsi", "Tahun"], how="inner")
+        .rename(columns=COLUMN_RENAME_MAP)
+        .sort_values(["Provinsi", "Tahun"])
+        .reset_index(drop=True)
     )
 
-    merged = merged.rename(columns=COLUMN_RENAME_MAP)
-    merged = merged.sort_values(["Provinsi", "Tahun"]).reset_index(drop=True)
-
-    print(
-        f"  [OK] Dataset gabungan: "
-        f"{merged.shape[0]} baris × {merged.shape[1]} kolom"
-    )
+    print(f"  [OK] Dataset gabungan: {merged.shape[0]} baris × {merged.shape[1]} kolom")
     return merged
 
-# ── Load ──────────────────────────────────────────────────────────────────────
+# load
 def load(df: pd.DataFrame) -> None:
-    print("\nLOAD")
+    print("LOAD:")
 
-    # Simpan CSV lokal
-    df.to_csv(OUTPUT_CSV_PATH, index=False)
-    print(f"  [OK] CSV tersimpan → {OUTPUT_CSV_PATH}")
+    df.to_csv(CSV_PATH, index=False)
+    print(f"  [OK] CSV tersimpan → {CSV_PATH}")
 
-    # Upload ke Aiven PostgreSQL
     try:
         engine = get_engine()
-        df.to_sql(
-            DATABASE_TABLE_NAME,
-            con=engine,
-            if_exists="replace",
-            index=False,
-            method="multi",
-        )
-        print(f"  [OK] Database diperbarui → tabel '{DATABASE_TABLE_NAME}'")
+        df.to_sql(DATABASE_TABLE, con=engine, if_exists="replace", index=False, method="multi")
+        print(f"  [OK] Database diperbarui → tabel '{DATABASE_TABLE}'")
     except Exception as e:
         print(f"  [GAGAL] Upload database gagal: {e}")
 
-# ── Main ──────────────────────────────────────────────────────────────────────
+# main
 if __name__ == "__main__":
-    print("Pipeline ETL\n")
+    print("Pipeline ETL:\n")
     load(transform(extract()))
-    print("\nPipeline Selesai")
+    print("\nSelesai")

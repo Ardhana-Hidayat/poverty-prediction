@@ -1,12 +1,3 @@
-"""
-app.py — Dashboard Prediksi Kemiskinan Indonesia
-=================================================
-Single-page Streamlit app.
-Model  : Random Forest Regressor
-Fitur  : Rata_Rata_Lama_Sekolah, Tingkat_Pengangguran_Terbuka, Tahun
-Split  : 80/20 random (shuffle=True, random_state=42)
-"""
-
 import sys
 import os
 
@@ -17,7 +8,7 @@ import plotly.graph_objects as go
 import streamlit as st
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 
-# ── Path Setup ────────────────────────────────────────────────────────────────
+# path setup
 _ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 if _ROOT_DIR not in sys.path:
     sys.path.insert(0, _ROOT_DIR)
@@ -25,7 +16,7 @@ if _ROOT_DIR not in sys.path:
 from dashboard.utils.data_loader         import load_raw_data, load_model
 from dashboard.utils.feature_engineering import predict_regression
 
-# ── Konfigurasi ───────────────────────────────────────────────────────────────
+# config
 st.set_page_config(
     page_title="Prediksi Kemiskinan Indonesia",
     page_icon="📊",
@@ -40,14 +31,12 @@ st.caption(
     "Data: BPS 2015–2025"
 )
 
-# ── Load ──────────────────────────────────────────────────────────────────────
+# load data
 df     = load_raw_data()
 model  = load_model()
 df_res = predict_regression(df, model)
 
-# ═════════════════════════════════════════════════════════════════════════════
-# BAGIAN 1 — EVALUASI MODEL
-# ═════════════════════════════════════════════════════════════════════════════
+# evaluasi model
 st.markdown("## 📈 Evaluasi Model")
 
 y_true = df_res["Aktual (%)"].values
@@ -65,7 +54,7 @@ col2.metric("MAE",  f"{mae:.4f} poin%",
 col3.metric("RMSE", f"{rmse:.4f} poin%",
             help="Root Mean Square Error — sensitif terhadap kesalahan besar")
 
-# ── Scatter + Feature Importance ─────────────────────────────────────────────
+# scatter + feature importance
 col_sc, col_imp = st.columns(2)
 
 with col_sc:
@@ -123,7 +112,7 @@ with col_imp:
     st.plotly_chart(fig_imp, use_container_width=True)
     st.caption(f"💡 Variabel paling berpengaruh: **{top_label}**")
 
-# ── Tabel Prediksi ────────────────────────────────────────────────────────────
+# tabel prediksi
 with st.expander("📄 Lihat Tabel Detail Prediksi"):
     col_f1, col_f2 = st.columns(2)
     with col_f1:
@@ -155,9 +144,7 @@ with st.expander("📄 Lihat Tabel Detail Prediksi"):
 
 st.divider()
 
-# ═════════════════════════════════════════════════════════════════════════════
-# BAGIAN 2 — PREDIKSI INTERAKTIF
-# ═════════════════════════════════════════════════════════════════════════════
+# prediksi interaktif
 st.markdown("## 🔮 Prediksi Interaktif")
 st.caption("Masukkan nilai RLS dan TPT untuk memperoleh estimasi tingkat kemiskinan.")
 

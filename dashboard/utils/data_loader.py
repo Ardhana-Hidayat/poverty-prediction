@@ -1,12 +1,12 @@
 """
 data_loader.py
 ==============
-Modul untuk memuat dataset dan model .pkl ke dalam dashboard Streamlit.
+Memuat dataset dan model untuk dashboard Streamlit.
 
 Prioritas sumber data:
-  1. Streamlit Secrets (untuk Streamlit Cloud deployment)
-  2. .env lokal via config.database (untuk development lokal)
-  3. CSV lokal sebagai fallback terakhir
+  1. Streamlit Secrets (Streamlit Cloud)
+  2. .env lokal via config.database (development lokal)
+  3. CSV lokal sebagai fallback
 """
 
 import os
@@ -18,26 +18,18 @@ import streamlit as st
 from sqlalchemy import create_engine
 
 # ── Path Setup ────────────────────────────────────────────────────────────────
-# Root proyek = dua level di atas file ini (dashboard/utils/ → dashboard/ → root)
 _PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "../.."))
 if _PROJECT_ROOT not in sys.path:
     sys.path.insert(0, _PROJECT_ROOT)
 
-# ── Konstanta ─────────────────────────────────────────────────────────────────
-PAPUA_DOB = [
-    "PAPUA BARAT DAYA", "PAPUA PEGUNUNGAN",
-    "PAPUA SELATAN",    "PAPUA TENGAH",
-]
-STRUCTURAL_BREAK = {"provinsi": "PAPUA", "tahun_min": 2024}
-
-MODEL_PATH_REGRESI = os.path.join(_PROJECT_ROOT, "model", "model_regresi_rf.pkl")
-CSV_FALLBACK       = os.path.join(_PROJECT_ROOT, "data", "dataset_cleaned.csv")
+from config.constants import (
+    CSV_PATH, MODEL_PATH, DATABASE_TABLE,
+)
 
 
 # ── Database Engine ───────────────────────────────────────────────────────────
 def _build_engine():
-    """Buat SQLAlchemy engine, coba Streamlit secrets dulu, lalu .env."""
-    # 1) Streamlit Cloud: gunakan st.secrets
+    """Bangun SQLAlchemy engine: Streamlit secrets → .env lokal."""
     try:
         db  = st.secrets["database"]
         uri = (
@@ -49,7 +41,6 @@ def _build_engine():
     except Exception:
         pass
 
-    # 2) Development lokal: gunakan .env
     try:
         from config.database import get_database_uri
         return create_engine(get_database_uri())
@@ -66,53 +57,36 @@ def get_engine():
 @st.cache_data(ttl=3600, show_spinner=False)
 def load_raw_data() -> pd.DataFrame:
     """
-    Muat dataset dari Aiven PostgreSQL.
-    Fallback ke CSV lokal jika koneksi gagal.
-    Menerapkan filter Papua DOB + structural break secara konsisten.
+    Muat dataset dari Aiven PostgreSQL, fallback ke CSV lokal.
+    Filter Papua DOB dan structural break diterapkan secara konsisten.
     """
     engine = get_engine()
     df     = None
 
     if engine is not None:
         try:
-            df = pd.read_sql("SELECT * FROM poverty_panel_data", engine)
+            df = pd.read_sql(f"SELECT * FROM {DATABASE_TABLE}", engine)
         except Exception as e:
             st.warning(f"⚠️ Koneksi database gagal: {e}. Menggunakan data lokal.")
 
     if df is None:
-        if not os.path.exists(CSV_FALLBACK):
+        if not os.path.exists(CSV_PATH):
             st.error("❌ Data tidak ditemukan. Pastikan database atau CSV tersedia.")
             st.stop()
-        df = pd.read_csv(CSV_FALLBACK)
+        df = pd.read_csv(CSV_PATH)
 
-    # Normalisasi format nama provinsi (Title Case)
     df["Provinsi"] = df["Provinsi"].str.strip().str.title()
-
-    # Filter provinsi Papua DOB & structural break
-    papua_dob_title = [p.title() for p in PAPUA_DOB]
-    sb_provinsi     = STRUCTURAL_BREAK["provinsi"].title()
-
-    mask_dob = df["Provinsi"].isin(papua_dob_title)
-    mask_sb  = (
-        (df["Provinsi"] == sb_provinsi) &
-        (df["Tahun"]    >= STRUCTURAL_BREAK["tahun_min"])
-    )
-    df = df[~mask_dob & ~mask_sb].reset_index(drop=True)
-
     return df
 
 
 # ── Load Model ────────────────────────────────────────────────────────────────
 @st.cache_resource(show_spinner=False)
 def load_model() -> object:
-    """
-    Muat model Random Forest Regressor dari disk.
-    Path: model/model_regresi_rf.pkl
-    """
-    if not os.path.exists(MODEL_PATH_REGRESI):
-        st.error(f"❌ File model tidak ditemukan: {MODEL_PATH_REGRESI}")
+    """Muat model Random Forest Regressor dari disk."""
+    if not os.path.exists(MODEL_PATH):
+        st.error(f"❌ Model tidak ditemukan: {MODEL_PATH}")
         st.error("Jalankan terlebih dahulu: python model/model_regresi.py")
         st.stop()
 
-    with open(MODEL_PATH_REGRESI, "rb") as f:
+    with open(MODEL_PATH, "rb") as f:
         return pickle.load(f)

@@ -2,13 +2,11 @@ import os
 from dotenv import load_dotenv
 from sqlalchemy import create_engine
 
-# Memuat file .env yang berada di root direktori proyek
+# Memuat file .env
 load_dotenv()
 
 def get_database_uri():
-    """
-    Membangun dan mengembalikan URI koneksi database dari variabel lingkungan (.env).
-    """
+    
     host = os.getenv("DB_HOST")
     port = os.getenv("DB_PORT", "25060")
     db_name = os.getenv("DB_NAME", "defaultdb")
@@ -26,12 +24,10 @@ def get_database_uri():
     return f"postgresql://{user}:{password}@{host}:{port}/{db_name}?sslmode={sslmode}"
 
 def get_engine():
-    """
-    Membuat dan mengembalikan SQLAlchemy engine untuk koneksi PostgreSQL Aiven.
-    """
+   
     try:
         uri = get_database_uri()
-        # Menggunakan psycopg2-binary yang sudah didaftarkan di requirements.txt
+        
         engine = create_engine(uri)
         return engine
     except Exception as e:
