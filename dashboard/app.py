@@ -6,14 +6,15 @@ import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 import streamlit as st
-from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
-from sklearn.model_selection import train_test_split
-from config.constants import FEATURES, TARGET
 
 # path setup
 _ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 if _ROOT_DIR not in sys.path:
     sys.path.insert(0, _ROOT_DIR)
+
+from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
+from sklearn.model_selection import train_test_split
+from config.constants import FEATURES, TARGET
 
 from dashboard.utils.data_loader         import load_raw_data, load_model
 from dashboard.utils.feature_engineering import predict_regression
