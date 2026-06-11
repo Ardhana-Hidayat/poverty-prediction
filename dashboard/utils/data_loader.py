@@ -51,6 +51,7 @@ def load_raw_data() -> pd.DataFrame:
     engine = get_engine()
 
     if engine is None:
+        st.error("❌ Kredensial Database tidak ditemukan! Pastikan Anda sudah mengatur **Secrets** di Streamlit Cloud atau file `.env` di lokal.")
         st.stop()
 
     try:
@@ -60,6 +61,7 @@ def load_raw_data() -> pd.DataFrame:
         )
 
     except Exception as e:
+        st.error(f"❌ Gagal mengambil data dari database Aiven: {e}")
         st.stop()
 
     df["Provinsi"] = (
