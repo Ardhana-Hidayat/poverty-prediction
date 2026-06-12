@@ -78,7 +78,7 @@ Tahapan ini memfasilitasi pengambilan keputusan strategis yang *data-driven* unt
 - Algoritma Machine Learning terdapat pada `model/model_regresi.py` yang melatih model regresi beserta tahapan evaluasinya.
 
 **Link Proyek**:
-- **ETL Pipeline**: 
-- **Machine Learning**:
-- **Streamlit**:
+- **ETL Pipeline**: https://github.com/Ardhana-Hidayat/poverty-prediction/blob/main/pipeline_etl.py
+- **Machine Learning**: https://github.com/Ardhana-Hidayat/poverty-prediction/blob/main/model/model_regresi.py
+- **Streamlit**: https://poverty-prediction-dashboard-app-ia8bwg.streamlit.app/
 
